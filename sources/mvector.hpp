@@ -4,6 +4,7 @@
 
 #include <ostream>
 #include <initializer_list>
+#include <type_traits> // std::enable_if
 
 namespace gm{
 
@@ -33,13 +34,15 @@ public:
     vector(const std::initializer_list<T> list);
     vector(const T * carray, const std::size_t carray_length, const std::size_t offset = 0);
 
-    //& Copy initializer - deepcopy
+    //& Copy constructor - deepcopy
     ////vector(const vector<T>&) = delete;
     vector(const vector<T>& orig_vector); // Deepcopy
+    vector(vector<T>&& orig_vector); // std::move
 
     //& Assignment operator - deepcopy
     ////vector& operator=(const vector&) = delete;
     vector<T>& operator=(const vector<T>& orig_vector); // Deepcopy
+    vector<T>& operator=(vector<T>&& orig_vector); // std::move
 
     //& Destructor
     virtual ~vector();
@@ -62,52 +65,167 @@ public:
 
     // getting elements
     T& at(const std::size_t index);
-    //const T& cat(const std::size_t index);
+    const T& cat(const std::size_t index) const; // for const objects
     T& operator[](const std::size_t index);
-    //const T& operator[](const std::size_t index);
+    const T& operator[](const std::size_t index) const; // for const objects
 
 
 
-    //& Math operators
+    //& Math operators for arithmetic types
     // operator+, operator+=
-    template<typename U> friend vector<U> operator+(const vector<U>& vec, const U value);
-    template<typename U> friend vector<U> operator+(const U value, const vector<U>& vec);
-    template<typename U> friend vector<U> operator+(const vector<U>& vec1, const vector<U>& vec2);
-    void operator+=(const T value);
-    void operator+=(const vector<T> vec);
+    template<typename U, typename V>
+    friend std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+    operator+(const vector<U>& vec, const V value);
+    
+    template<typename U, typename V>
+    friend std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+    operator+(const V value, const vector<U>& vec);
+    
+    template<typename U>
+    friend std::enable_if_t<std::is_arithmetic<U>::value, vector<U>>
+    operator+(const vector<U>& vec1, const vector<U>& vec2);
+    
+    template<typename V, typename U = T>
+    std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value>
+    operator+=(const V value);
+
+    template<typename U = T>
+    std::enable_if_t<std::is_arithmetic<U>::value>
+    operator+=(const vector<U> vec);
     
     // operator-, operator-=
-    template<typename U> friend vector<U> operator-(const vector<U>& vec, const U value);
-    template<typename U> friend vector<U> operator-(const U value, const vector<U>& vec);
-    template<typename U> friend vector<U> operator-(const vector<U>& vec1, const vector<U>& vec2);
-    void operator-=(const T value);
-    void operator-=(const vector<T> vec);
+    template<typename U, typename V>
+    friend std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+    operator-(const vector<U>& vec, const V value);
+    
+    template<typename U, typename V>
+    friend std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+    operator-(const V value, const vector<U>& vec);
+    
+    template<typename U>
+    friend std::enable_if_t<std::is_arithmetic<U>::value, vector<U>>
+    operator-(const vector<U>& vec1, const vector<U>& vec2);
+    
+    template<typename V, typename U = T>
+    std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value>
+    operator-=(const V value);
+
+    template<typename U = T>
+    std::enable_if_t<std::is_arithmetic<U>::value>
+    operator-=(const vector<U> vec);
 
     // operator*, operator *=
-    template<typename U> friend vector<U> operator*(const vector<U>& vec, const U value);
-    template<typename U> friend vector<U> operator*(const U value, const vector<U>& vec);
-    template<typename U> friend vector<U> operator*(const vector<U>& vec1, const vector<U>& vec2);
-    void operator*=(const T value);
-    void operator*=(const vector<T> vec);
+    template<typename U, typename V>
+    friend std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+    operator*(const vector<U>& vec, const V value);
+    
+    template<typename U, typename V>
+    friend std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+    operator*(const V value, const vector<U>& vec);
+    
+    template<typename U>
+    friend std::enable_if_t<std::is_arithmetic<U>::value, vector<U>>
+    operator*(const vector<U>& vec1, const vector<U>& vec2);
+    
+    template<typename V, typename U = T>
+    std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value>
+    operator*=(const V value);
+
+    template<typename U = T>
+    std::enable_if_t<std::is_arithmetic<U>::value>
+    operator*=(const vector<U> vec);
 
     // operator/, operator/=
-    template<typename U, typename V> friend vector<U> operator/(const vector<U>& vec, const V value);
-    template<typename U> friend vector<U> operator/(const U value, const vector<U>& vec);
-    template<typename U> friend vector<U> operator/(const vector<U>& vec1, const vector<U>& vec2);
-    void operator/=(const T value);
-    void operator/=(const vector<T> vec);
+    template<typename U, typename V>
+    friend typename std::enable_if<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>::type
+    operator/(const vector<U>& vec, const V value);
     
-    // operator/, operator /=
-    template<typename U> friend vector<U> operator%(const vector<U>& vec, const U value);
-    template<typename U> friend vector<U> operator%(const U value, const vector<U>& vec);
-    template<typename U> friend vector<U> operator%(const vector<U>& vec1, const vector<U>& vec2);
-    void operator%=(const T value);
-    void operator%=(const vector<T> vec);
+    template<typename U, typename V>
+    friend typename std::enable_if<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>::type
+    operator/(const V value, const vector<U>& vec);
+    
+    template<typename U>
+    friend typename std::enable_if<std::is_arithmetic<U>::value, vector<U>>::type
+    operator/(const vector<U>& vec1, const vector<U>& vec2);
+    
+    template<typename V, typename U = T>
+    typename std::enable_if<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>:: value>::type
+    operator/=(const V value);
+    
+    template<typename U = T>
+    typename std::enable_if<std::is_arithmetic<U>::value>::type
+    operator/=(const vector<T> vec);
+    
+    // operator%, operator %=
+    //@ for integral types only - SFINAE (Substitution failure is not an error)
+    template<typename U, typename V> // default template arguments are not allowed in friend functions (U = T)
+    friend std::enable_if_t<std::is_integral<U>::value && std::is_integral<V>::value && std::is_convertible<V, U>::value, vector<U>>
+    operator%(const vector<U>& vec, const V value);
+    
+    template<typename U, typename V>
+    friend std::enable_if_t<std::is_integral<U>::value && std::is_integral<V>::value && std::is_convertible<V, U>::value, vector<U>>
+    operator%(const V value, const vector<U>& vec);
+
+    template<typename U>
+    friend std::enable_if_t<std::is_integral<U>::value, vector<U>>
+    operator%(const vector<U>& vec1, const vector<U>& vec2);
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+
+
+    //@template<typename V>
+    //@typename std::enable_if<std::is_integral<T>::value && std::is_integral<V>::value && std::is_convertible<V, T>::value>::type
+    //@operator%=(const V value);
+    
+    //@std::enable_if_t<std::is_integral<T>::value> operator%=(const vector<T> vec); // default typename is void!
+    
+    //&template<typename V, typename std::enable_if<std::is_integral<T>::value && std::is_integral<V>::value && std::is_convertible<V, T>::value>::type>
+    //&void operator%=(const V value);
+    //&
+    //&template<typename std::enable_if<std::is_integral<T>::value>::type>
+    //&void operator%=(const vector<T> vec);
+    
+    
+    template<typename V, typename U = T>
+    typename std::enable_if<std::is_integral<U>::value && std::is_integral<V>::value && std::is_convertible<V, U>::value>::type
+    operator%=(const V value);
+    
+    template<typename V, typename U = T>
+    typename std::enable_if<!std::is_integral<U>::value>::type
+    operator%=(const V) = delete;
+    
+    template<typename U = T>
+    std::enable_if_t<std::is_integral<U>::value>
+    operator%=(const vector<U> vec); // default typename is void!
+    
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////
 
     //& unary operatos
     // operator+
+    //template<typename U = T>
+    //std::enable_if_t<std::is_arithmetic<U>::value, vector<U>>
+    //operator+() const = default;
 
     // operator-
+    template<typename U = T>
+    std::enable_if_t<std::is_arithmetic<U>::value, vector<U>>
+    operator-() const;
 
 
 
@@ -115,9 +233,6 @@ public:
     //& operator<<    
     template<typename U> friend std::ostream& operator<<(std::ostream& out, const vector<U>& vec);
 };
-
-
-
 
 }
 

@@ -53,7 +53,7 @@ template<typename T>
 vector<T>::vector(const std::size_t length, const T init_value)
         : vector(length) //? ()
 {
-    for(std::size_t i; i < length; i++)
+    for(std::size_t i{}; i < length; i++)
         m_data[i] = init_value;
 }
 
@@ -62,7 +62,7 @@ template<typename T>
 vector<T>::vector(const std::initializer_list<T> list)
         : vector(list.size())
 {
-    std::size_t i;
+    std::size_t i{};
     for(auto element: list) // T Element: list
         m_data[i++] = element;
 }
@@ -84,7 +84,7 @@ vector<T>::vector(const T * carray, const std::size_t carray_len, const std::siz
     }
 }
 
-//& Copy Initialization
+//& Copy constructor
 template<typename T>
 vector<T>::vector(const vector& orig_vector){
     m_length = orig_vector.m_length;
@@ -94,6 +94,19 @@ vector<T>::vector(const vector& orig_vector){
 
     for(std::size_t i{}; i < m_length; ++i)
         m_data[i] = orig_vector.m_data[i];
+}
+
+//@ move constructor
+template<typename T>
+vector<T>::vector(vector&& orig_vector){
+    m_length = orig_vector.m_length;
+    m_capacity = orig_vector.m_capacity;
+
+    this->m_data = orig_vector.m_data;
+    
+    orig_vector.m_length = 0;
+    orig_vector.m_capacity = 0;
+    orig_vector.m_data = nullptr;
 }
 
 //& Copy Assignment
@@ -112,6 +125,27 @@ vector<T>& vector<T>::operator=(const vector& orig_vector){
 
     for(std::size_t i{}; i < m_length; ++i)
         m_data[i] = orig_vector.m_data[i];
+
+    return *this;
+}
+
+//@ move assignment
+template<typename T>
+vector<T>& vector<T>::operator=(vector&& orig_vector){
+    if(this == &orig_vector) // or *this == orig_vector
+        return *this;
+    
+    // deleting old data
+    _deallocate_memory();
+
+    m_length = orig_vector.m_length;
+    m_capacity = orig_vector.m_capacity;
+
+    m_data = orig_vector.m_data;
+
+    orig_vector.m_length = 0;
+    orig_vector.m_capacity = 0;
+    orig_vector.m_length = nullptr;
 
     return *this;
 }
@@ -249,16 +283,31 @@ T& vector<T>::at(const std::size_t index){
 }
 
 template<typename T>
+const T& vector<T>::cat(const std::size_t index) const{
+    if (index > m_length)
+        throw std::out_of_range(std::to_string(index).append(std::string{" Index is out of range: [0, "}.append(std::to_string(m_length)).append(").")));
+
+    return m_data[index];
+}
+
+template<typename T>
 T& vector<T>::operator[](const std::size_t index){
     return this->at(index);
 }
+
+template<typename T>
+const T& vector<T>::operator[](const std::size_t index) const{
+    return this->cat(index);
+}
+
 
 
 //& operator<<
 template<typename T>
 std::ostream& operator<<(std::ostream& out, const vector<T>& vec){
     
-    std::stringstream sstr("{ ");
+    std::stringstream sstr;
+    sstr << "{ ";
     for(std::size_t i{}; i < vec.m_length; ++i)
         sstr << vec.m_data[i] << ", ";
     
@@ -270,42 +319,49 @@ std::ostream& operator<<(std::ostream& out, const vector<T>& vec){
 
 //& Math Operators
 //@ operator+, operator+=
-template<typename T>
-vector<T> operator+(const vector<T>& vec, const T value){
-    vector<T> temp(vec.m_length());
+template<typename U, typename V>
+std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+operator+(const vector<U>& vec, const V value){
+    vector<U> temp(vec.m_length);
 
     for(std::size_t i{}; i < vec.m_length; ++i)
-        temp[i] = vec[i] + value;
+        temp[i] = vec[i]+static_cast<U>(value);
     
     return temp;
 }
 
-template<typename T>
-vector<T> operator+(const T value, const vector<T>& vec){
-    return (vec + value); // calls operator+(const vector<T>, const T);
+template<typename U, typename V>
+std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+operator+(const V value, const vector<U>& vec){
+    return (vec+value); // calls operator*(const vector<U>, const V);
 }
 
-template<typename T>
-vector<T> operator+(const vector<T>& vec1, const vector<T>& vec2){
+template<typename U>
+std::enable_if_t<std::is_arithmetic<U>::value, vector<U>>
+operator+(const vector<U>& vec1, const vector<U>& vec2){
     if(vec1.m_length != vec2.m_length)
         throw std::range_error("vec1 and vec2 must have the same length (size)");
     
-    vector<T> temp(vec1.m_length);
+    vector<U> temp(vec1.m_length);
 
-    for(std::size_t i{}; i < vec1.length; ++i)
-        temp[i] = vec1[i] + vec2[i];
+    for(std::size_t i{}; i < vec1.m_length; ++i)
+        temp[i] = vec1[i]+vec2[i];
     
     return temp;
 }
 
 template<typename T>
-void vector<T>::operator+=(const T value){
+template<typename V, typename U> // U = T
+std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value>
+vector<T>::operator+=(const V value){
     for(std::size_t i{}; i < m_length; ++i)
-        m_data[i] += value;
+        m_data[i] += static_cast<U>(value);
 }
 
 template<typename T>
-void vector<T>::operator+=(const vector<T> vec){
+template<typename U> // U = T
+std::enable_if_t<std::is_arithmetic<U>::value>
+vector<T>::operator+=(const vector<U> vec){
     if(m_length != vec.m_length)
         throw std::range_error("Both vectors must have the same length (size)");
 
@@ -315,49 +371,56 @@ void vector<T>::operator+=(const vector<T> vec){
 
 
 //@ operator-, operator-=
-template<typename T>
-vector<T> operator-(const vector<T>& vec, const T value){
-    vector<T> temp(vec.m_length());
+template<typename U, typename V>
+std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+operator-(const vector<U>& vec, const V value){
+    vector<U> temp(vec.m_length);
 
     for(std::size_t i{}; i < vec.m_length; ++i)
-        temp[i] = vec[i] - value;
+        temp[i] = vec[i] - static_cast<U>(value);
     
     return temp;
 }
 
-template<typename T>
-vector<T> operator-(const T value, const vector<T>& vec){
+template<typename U, typename V>
+std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+operator-(const V value, const vector<U>& vec){
     //TODO return -(vec - value); // calls operator+(const vector<T>, const T);
 
-    vector<T> temp(vec.m_length());
+    vector<U> temp(vec.m_length());
 
     for(std::size_t i{}; i < vec.m_length; ++i)
-        temp[i] = value - vec[i];
+        temp[i] = static_cast<U>(value) - vec[i];
     
     return temp;
 }
 
-template<typename T>
-vector<T> operator-(const vector<T>& vec1, const vector<T>& vec2){
+template<typename U>
+std::enable_if_t<std::is_arithmetic<U>::value, vector<U>>
+operator-(const vector<U>& vec1, const vector<U>& vec2){
     if(vec1.m_length != vec2.m_length)
         throw std::range_error("vec1 and vec2 must have the same length (size)");
     
-    vector<T> temp(vec1.m_length);
+    vector<U> temp(vec1.m_length);
 
-    for(std::size_t i{}; i < vec1.length; ++i)
+    for(std::size_t i{}; i < vec1.m_length; ++i)
         temp[i] = vec1[i] - vec2[i];
     
     return temp;
 }
 
 template<typename T>
-void vector<T>::operator-=(const T value){
+template<typename V, typename U> // U = T
+std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value>
+vector<T>::operator-=(const V value){
     for(std::size_t i{}; i < m_length; ++i)
-        m_data[i] -= value;
+        m_data[i] -= static_cast<U>(value);
 }
 
 template<typename T>
-void vector<T>::operator-=(const vector<T> vec){
+template<typename U> // U = T
+std::enable_if_t<std::is_arithmetic<U>::value>
+vector<T>::operator-=(const vector<U> vec){
     if(m_length != vec.m_length)
         throw std::range_error("Both vectors must have the same length (size)");
 
@@ -366,42 +429,49 @@ void vector<T>::operator-=(const vector<T> vec){
 }
 
 //@ operator*, operator*=
-template<typename T>
-vector<T> operator*(const vector<T>& vec, const T value){
-    vector<T> temp(vec.m_length());
+template<typename U, typename V>
+std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+operator*(const vector<U>& vec, const V value){
+    vector<U> temp(vec.m_length);
 
     for(std::size_t i{}; i < vec.m_length; ++i)
-        temp[i] = vec[i]*value;
+        temp[i] = vec[i]*static_cast<U>(value);
     
     return temp;
 }
 
-template<typename T>
-vector<T> operator*(const T value, const vector<T>& vec){
-    return (vec*value); // calls operator*(const vector<T>, const T);
+template<typename U, typename V>
+std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>
+operator*(const V value, const vector<U>& vec){
+    return (vec*value); // calls operator*(const vector<U>, const V);
 }
 
-template<typename T>
-vector<T> operator*(const vector<T>& vec1, const vector<T>& vec2){
+template<typename U>
+std::enable_if_t<std::is_arithmetic<U>::value, vector<U>>
+operator*(const vector<U>& vec1, const vector<U>& vec2){
     if(vec1.m_length != vec2.m_length)
         throw std::range_error("vec1 and vec2 must have the same length (size)");
     
-    vector<T> temp(vec1.m_length);
+    vector<U> temp(vec1.m_length);
 
-    for(std::size_t i{}; i < vec1.length; ++i)
+    for(std::size_t i{}; i < vec1.m_length; ++i)
         temp[i] = vec1[i]*vec2[i];
     
     return temp;
 }
 
 template<typename T>
-void vector<T>::operator*=(const T value){
+template<typename V, typename U> // U = T
+std::enable_if_t<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value>
+vector<T>::operator*=(const V value){
     for(std::size_t i{}; i < m_length; ++i)
-        m_data[i] *= value;
+        m_data[i] *= static_cast<U>(value);
 }
 
 template<typename T>
-void vector<T>::operator*=(const vector<T> vec){
+template<typename U> // U = T
+std::enable_if_t<std::is_arithmetic<U>::value>
+vector<T>::operator*=(const vector<U> vec){
     if(m_length != vec.m_length)
         throw std::range_error("Both vectors must have the same length (size)");
 
@@ -410,42 +480,54 @@ void vector<T>::operator*=(const vector<T> vec){
 }
 
 //@ operator/, operator/=
-template<typename T, typename U>
-vector<T> operator/(const vector<T>& vec, const U value){
-    vector<T> temp (vec.m_length);
+template<typename U, typename V>
+typename std::enable_if<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>::type
+operator/(const vector<U>& vec, const V value){
+    vector<U> temp (vec.m_length);
 
     for(std::size_t i{}; i < vec.m_length; ++i)
-        temp[i] = vec.m_data[i]/value;
+        temp[i] = vec.m_data[i]/static_cast<U>(value);
     
     return temp;
 }
 
-template<typename T>
-vector<T> operator/(const T value, const vector<T>& vec){
-    return (vec/value); // calls operator/(const vector<T>, const T);
+template<typename U, typename V>
+typename std::enable_if<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>::value, vector<U>>::type
+operator/(const V value, const vector<U>& vec){
+    vector<U> temp (vec.m_length);
+
+    for(std::size_t i{}; i < vec.m_length; ++i)
+        temp[i] = static_cast<U>(value)/vec.m_data[i];
+
+    return temp;
 }
 
-template<typename T>
-vector<T> operator/(const vector<T>& vec1, const vector<T>& vec2){
+template<typename U>
+typename std::enable_if<std::is_arithmetic<U>::value, vector<U>>::type
+operator/(const vector<U>& vec1, const vector<U>& vec2){
     if(vec1.m_length != vec2.m_length)
         throw std::range_error("vec1 and vec2 must have the same length (size)");
     
-    vector<T> temp(vec1.m_length);
+    vector<U> temp(vec1.m_length);
 
-    for(std::size_t i{}; i < vec1.length; ++i)
+    for(std::size_t i{}; i < vec1.m_length; ++i)
         temp[i] = vec1[i]/vec2[i];
     
     return temp;
 }
 
 template<typename T>
-void vector<T>::operator/=(const T value){
+template<typename V, typename U> // U = T
+typename std::enable_if<std::is_arithmetic<U>::value && std::is_arithmetic<V>::value && std::is_convertible<V, U>:: value>::type
+vector<T>::operator/=(const V value){
     for(std::size_t i{}; i < m_length; ++i)
-        m_data[i] /= value;
+        m_data[i] /= static_cast<U>(value);
 }
 
 template<typename T>
-void vector<T>::operator/=(const vector<T> vec){
+template<typename U> // U = T
+typename std::enable_if<std::is_arithmetic<U>::value>::type
+vector<T>::operator/=(const vector<T> vec){
     if(m_length != vec.m_length)
         throw std::range_error("Both vectors must have the same length (size)");
 
@@ -454,6 +536,7 @@ void vector<T>::operator/=(const vector<T> vec){
 }
 
 //@ operator%, operator%=
+/*
 template<typename T>
 vector<T> operator%(const vector<T>& vec, const T value){
     vector<T> temp(vec.m_length());
@@ -496,6 +579,122 @@ void vector<T>::operator%=(const vector<T> vec){
     for(std::size_t i{}; i < m_length; ++i)
         m_data[i] %= vec.m_data[i];
 }
+*/
+template<typename T, typename V>
+std::enable_if_t<std::is_integral<T>::value && std::is_integral<V>::value && std::is_convertible<V, T>::value, vector<T>>
+operator%(const vector<T>& vec, const V value){
+    vector<T> temp(vec.m_length);
+
+    for(std::size_t i{}; i < vec.m_length; ++i)
+        temp[i] = vec[i] % static_cast<T>(value);
+    
+    return temp;
+}
+
+template<typename T, typename V>
+std::enable_if_t<std::is_integral<T>::value && std::is_integral<V>::value && std::is_convertible<V, T>::value, vector<T>>
+operator%(const V value, const vector<T>& vec){
+    vector<T> temp(vec.m_length);
+
+    for(std::size_t i{}; i < vec.m_length; ++i)
+        temp[i] = static_cast<T>(value) % vec[i];
+    
+    return temp;
+}
+
+template<typename T>
+std::enable_if_t<std::is_integral<T>::value, vector<T>>
+operator%(const vector<T>& vec1, const vector<T>& vec2){
+    if(vec1.m_length != vec2.m_length)
+        throw std::range_error("vec1 and vec2 must have the same length!");
+
+    vector<T> temp(vec1.m_length);
+
+    for(std::size_t i{}; i < vec1.m_length; ++i)
+        temp[i] = vec1[i] % vec2[i];
+    
+    return temp;
+
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
+//@template<typename T>
+//@template<typename V> // https://en.cppreference.com/w/cpp/language/member_template
+//@typename std::enable_if<std::is_integral<T>::value && std::is_integral<V>::value && std::is_convertible<V, T>::value>::type
+//@vector<T>::operator%=(const V value){
+//@    for(std::size_t i{}; i < m_length; ++i)
+//@        this->m_data[i] %= static_cast<T>(value);
+//@}
 
 
+
+//@template<typename T>
+//@std::enable_if_t<std::is_integral<T>::value> vector<T>::operator%=(const vector<T> vec){
+//@    if(this->m_length != vec.m_length)
+//@        throw std::range_error("vec1 and vec2 must have the same length!");
+//@    
+//@    for(std::size_t i{}; i < this->m_length; ++i)
+//@        this->m_data[i] %= vec.m_data[i];
+//@}
+
+////////
+
+//&template<typename T>
+//&template<typename V, typename std::enable_if<std::is_integral<T>::value && std::is_integral<V>::value && std::is_convertible<V, T>::value>>
+//&void vector<T>::operator%=(const V value){
+//&    for(std::size_t i{}; i < m_length; ++i)
+//&            this->m_data[i] %= static_cast<T>(value);
+//&}
+//&
+//&template<typename T>
+//&template<typename std::enable_if<std::is_integral<T>::value>>
+//&void vector<T>::operator%=(const vector<T> vec){
+//&
+//&}
+
+
+template<typename T>
+template<typename V, typename U> // https://en.cppreference.com/w/cpp/language/member_template
+typename std::enable_if<std::is_integral<U>::value && std::is_integral<V>::value && std::is_convertible<V, U>::value>::type
+vector<T>::operator%=(const V value){
+    for(std::size_t i{}; i < m_length; ++i)
+        this->m_data[i] %= static_cast<U>(value);
+}
+
+//template<typename T>
+//template<typename V, typename U> // https://en.cppreference.com/w/cpp/language/member_template
+//typename std::enable_if<!std::is_integral<U>::value>::type
+//vector<T>::operator%=(const V) = delete;
+
+
+
+template<typename T>
+template<typename U>
+std::enable_if_t<std::is_integral<U>::value>
+vector<T>::operator%=(const vector<U> vec){
+    if(this->m_length != vec.m_length)
+        throw std::range_error("vec1 and vec2 must have the same length!");
+    
+    for(std::size_t i{}; i < this->m_length; ++i)
+        this->m_data[i] %= vec.m_data[i];
+}
+
+//& Uniary operators
+template<typename T>
+template<typename U> // U = T
+std::enable_if_t<std::is_arithmetic<U>::value, vector<U>>
+vector<T>::operator-() const {
+    return (-1*(*this));
+}
 }
