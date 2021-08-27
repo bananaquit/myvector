@@ -1,0 +1,3 @@
+// the configured options and settings for MyVector
+#define MyVector_VERSION_MAJOR @MyVector_VERSION_MAJOR@
+#define MyVector_VERSION_MINOR @Myvector_VERSION_MINOR@
